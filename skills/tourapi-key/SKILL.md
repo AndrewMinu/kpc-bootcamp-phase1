@@ -11,7 +11,7 @@ description: 로컬 싱크 관광 부트캠프 3단계 — 참가자가 본인 T
 ## 보안 관점 (짚고 가기)
 - 이 키는 **공공데이터포털 무료 인증키**로 민감도가 낮다(요금 없음·요청 제한 있음·언제든 재발급/폐기 가능). 비밀번호·결제정보가 아니다.
 - 그래도 **깃 커밋·카드·`context.md`에는 저장하지 않는다.** 회원가입·발급은 참가자 본인이 직접.
-- 자세한 원본: `bootcamp-shared/guides/api-setup.md`(없으면 `ft-skills/shared-context/api-setup.md`).
+- 자세한 원본: `bootcamp-guide/references/guides/api-setup.md`(없으면 `ft-skills/shared-context/api-setup.md`).
 
 ## 발급·신청 (참가자 본인)
 1. [공공데이터포털](https://www.data.go.kr) 회원가입·로그인.
