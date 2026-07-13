@@ -68,8 +68,58 @@ https://apis.data.go.kr/B551011/KorService2/areaBasedList2?serviceKey={KEY}&numO
 
 > 한 지역의 공급 프로필 = 위 코드별로 `totalCount`를 합산해 비교. 이게 카드의 "TourAPI 공급 단서"를 자동 채운다.
 
+## 3.6 관광수요지수 3종 (데이터랩 지표를 API로) ★신규
+
+> 데이터랩 '관광수요지수'를 API로 제공. **체류·소비를 이제 수동 다운 없이 받는다.**
+> ⚠ 이 3종의 `areaCd`/`signguCd`는 **행정 코드**(서울 11, 구로 11530) — TourAPI 지역코드와 다르다.
+> 값은 **상대 지수**(예: 79.08) — 절대 해석 금지, 지역 간 비교·순위로.
+
+| API | Base URL (B551011) | 오퍼레이션 | 핵심 지표코드 |
+|---|---|---|---|
+| **관광 수요 강도** ★ | `AreaTarDemDsService` | `/areaTarSjrnDsList` (체류)<br>`/areaTarExpDsList` (소비) | 체류 `2102` **숙박 비중**(2101 타권역비중, 2103~05 1·2·3박, 21 전체)<br>소비 `2201` **외지인 소비액**(2202 소비비중, 2203 방문대비소비, 22 전체) |
+| 관광 자원 수요 | `AreaTarResDemService` | `/areaTarSvcDemList`<br>`/areaCulResDemList` | 유형별 SNS 언급·소비·내비 검색량 (수요) |
+| 관광 다양성 | `AreaTarDivService` | `/areaTouDivList`(연령)<br>`/areaExpDivList`(소비연령)<br>`/areaIntlDivList`(국제·국적) | 연령·국적 다양성 (※자원 다양성 아님) |
+
+**호출 예 (체류·숙박비중)**
+```
+https://apis.data.go.kr/B551011/AreaTarDemDsService/areaTarSjrnDsList?serviceKey={KEY}&MobileOS=ETC&MobileApp=ftskill&_type=json&baseYm=202509&areaCd=11&signguCd=11530&tarSjrnDsIxCd=2102
+```
+- 필수: `serviceKey`·`MobileOS`·`MobileApp`·`baseYm`(YYYYMM)·`areaCd`. `signguCd`·지표코드는 옵션.
+- **`signguCd`를 빼면 그 시도의 전 시군구**가 나온다 → 17개 시도 루프로 전국 수집 가능.
+- 응답: `areaNm`·`signguNm`·`{지표}IxNm`·`{지표}IxVal`.
+- ⚠ **지표코드를 안 넣으면 0건**이 나올 수 있다(반드시 지정).
+
+**활용신청**: 세 API 각각 1회(자동승인·무료, 개발계정 1,000회/일).
+- 수요 강도 — data.go.kr/data/15151868 · 자원 수요 — 15152138 · 다양성 — 15151365
+
 ## 4. 스킬이 키를 쓰는 방식
 - `tourism-data-validator`는 실행 시 `DATA_GO_KR_SERVICE_KEY` 존재 여부를 먼저 확인한다.
   - 있으면: 위 자동 데이터셋을 호출해 평균·합계·순위·비교·증감으로 시그니처를 검증.
   - 없으면: 전부 다운로드 액션 목록으로 정리(미검증 플래그).
 - `topic-card-builder`의 2단계 데이터 검증은 이 스킬 로직을 그대로 호출한다.
+
+## 3.7 관광지 집중률·방문 추이 예측 (TatsCnctrRateService) — 참가자 조건부
+`GET https://apis.data.go.kr/B551011/TatsCnctrRateService/tatsCnctrRatedList`
+- 필수: `areaCd`(행정 시도) + `signguCd`(행정 시군구). **`baseYm`/`baseYmd`를 넣으면 INVALID 에러** — 넣지 않는다.
+- 응답: `tAtsNm`(관광지) · `baseYmd` · `cnctrRate`. 조회일부터 **30일치 예보**, 가장 붐빌 때를 100으로 본 **상대 지수**(KT 통신데이터 기반).
+- 예) 종로구 = 관광지 34곳 × 30일(3,390행). 가회민화박물관 월 57.9 → 토 97.8 → 월 58.8.
+- **카드 근거로 쓰지 않는다** — 조회 시점마다 값이 바뀌어 고정 근거가 못 된다.
+- 쓰임: (1) 쏠림·계절·분산 주제 팀의 **검증 보조**, (2) 프로토타입의 **혼잡도 기능**.
+- ⚠ **CORS 불가**: `apis.data.go.kr`은 CORS 헤더를 주지 않는다 → 브라우저(HTML)에서 직접 fetch하면 실패한다.
+  `file://`로 연 HTML은 옆에 둔 로컬 `data.json`을 fetch하는 것도 막힌다(origin `null`) → **별도 JSON 파일도 쓰지 않는다.**
+  프로토타입은 **터미널에서 한 번 호출 → 결과를 HTML 스크립트에 `const DATA = [...]` 로 인라인**한다. 파일 하나로 열리고, 키는 `.env`에만 남는다(HTML에 넣으면 업로드 시 노출).
+  실서비스라면 정적 데이터가 아니라 **서버가 API를 대신 호출**하는 구조로 간다(CORS·키 문제가 함께 사라진다). 피칭에서 이 한계를 짚으면 좋다.
+  → `participant-skills/data-collect-validate` §④, `participant-skills/prototype-build` 심화에 반영됨.
+
+## 3.8 관광지별 연관 관광지 (TarRlteTarService1) — 카드 근거
+`GET .../TarRlteTarService1/areaBasedList1` · 필수: `baseYm`(202509) + `areaCd` + `signguCd`(**시군구 필수**).
+- 티맵 내비 기반 관광지→연관 관광지 랭킹. 파생: **동선 유출비율**(연관지가 타 시군구인 비율), 연관 관광지 수, 최다 유출처.
+- 전국 252 시군구 수집 완료 → `templates/context_rlte.csv` (평균 유출 40.8%). 도시 구는 구조상 높으니 **도시·시군을 나눠 비교**한다.
+
+## 3.9 니치 공급 3종 — 카드 근거
+- 무장애: `KorWithService2/areaBasedList2` (TourAPI 코드) — 9,948건
+- 웰니스: `WellnessTursmService/areaBasedList` (**`langDivCd=KOR` 필수**, lDong 코드) — 174건, 137개 시군구 0건
+- 캠핑: `GoCamping/basedList` (도/시군구 **이름**) — 3,044건
+→ `templates/context_niche.csv`
+- ⚠ 2026년 **광주+전남 → '전남광주통합특별시'(코드 12)** 통합. 시도코드로만 집계하면 두 지역이 0으로 보인다. 이름 기준으로 되돌려 붙일 것.
+- 의료관광(`MdclTursmService`, `langDivCd` 필수): 331건 중 서울 214(65%) — 지역 편중이 심해 **카드로 쓰지 않는다**.
